@@ -3,6 +3,8 @@
 
 > Omarchy is an omakase Arch Linux distribution with Hyprland tiling window manager, designed for developers. Features full-disk encryption, keyboard-driven workflow, 11 themes, and includes Neovim, development tools, and productivity apps out of the box.
 
+Version 3.0 
+
 ## Table of Contents
 
 - [Overview](#overview)
