@@ -1,0 +1,678 @@
+```markdown
+# Omarchy
+
+> Omarchy is an omakase Arch Linux distribution with Hyprland tiling window manager, designed for developers. Features full-disk encryption, keyboard-driven workflow, 11 themes, and includes Neovim, development tools, and productivity apps out of the box.
+
+## Table of Contents
+
+- [Overview](#overview)
+- [Installation](#installation)
+- [Navigation & Hotkeys](#navigation--hotkeys)
+- [Key Applications](#key-applications)
+- [Neovim](#neovim)
+- [Shell Tools](#shell-tools)
+- [Configuration](#configuration)
+- [Monitors & Display](#monitors--display)
+- [Themes](#themes)
+- [Development](#development)
+- [Packages & Updates](#packages--updates)
+- [Web Apps](#web-apps)
+- [Gaming](#gaming)
+- [Security](#security)
+- [Troubleshooting](#troubleshooting)
+- [Mac Support](#mac-support)
+- [Compatibility](#compatibility)
+
+## Overview
+
+Omarchy is an Arch Linux distribution based on the Hyprland tiling window manager. It ships with everything a modern software developer needs: Neovim, Spotify, Chromium, Typora, Alacritty, LibreOffice, and Zoom. The system is designed with both aesthetics and productivity in mind, featuring beautiful themes and a keyboard-driven workflow. It's TUI-heavy, theme-delighted, and embraces the Linux philosophy of manual configuration and terminal usage.
+
+## Installation
+
+**Requirements:**
+- Download Omarchy Online ISO from omarchy.org
+- Create bootable USB with balenaEtcher (Mac/Windows) or caligula (Linux)
+- Disable Secure Boot and TPM in BIOS (Microsoft security schemes)
+- Use wired or 2.4GHz keyboard (Bluetooth won't work for disk encryption at boot)
+
+**Process:**
+1. Boot from USB stick
+2. Answer configuration questions
+3. Select drive for installation (will be wiped)
+4. Installation takes 2-5 minutes
+5. Full-disk encryption is mandatory
+
+**Help:** Join #omarchy-install-help on Discord if stuck
+
+**Manual Installation:**
+For special needs (dual-boot, M-series Macs via Asahi Alarm), use vanilla Arch ISO with archinstall:
+- Use LUKS encryption with btrfs filesystem
+- Default partitioning layout with compression
+- Set up user as superuser
+- Use pipewire for audio, limine for bootloader
+- After Arch install: `curl -fsSL https://omarchy.org/install | bash`
+
+## Navigation & Hotkeys
+
+**Core Navigation** (Super = Windows/Cmd key):
+- `Super + Space`: Application launcher
+- `Super + Alt + Space`: Omarchy control menu
+- `Super + Escape`: Lock/suspend/restart/shutdown
+- `Super + K`: Show all keyboard bindings
+- `Super + W`: Close window
+- `Ctrl + Alt + Del`: Close all windows
+
+**Workspaces:**
+- `Super + 1/2/3/4`: Jump to workspace
+- `Super + Tab`: Next workspace
+- `Super + Shift + Tab`: Previous workspace
+- `Super + Shift + 1/2/3/4`: Move window to workspace
+
+**Window Management:**
+- `Super + Arrow`: Move focus to window in direction
+- `Super + Shift + Arrow`: Swap windows
+- `Super + J`: Toggle horizontal/vertical stack
+- `Super + V`: Float/unfloat window
+- `F11`: Full screen
+- `Alt + F11`: Full width
+- `Super + Equal/Minus`: Grow windows left/right
+- `Super + Shift + Equal/Minus`: Grow windows bottom/top
+
+**Quick Launches:**
+- `Super + Return`: Terminal
+- `Super + B`: Browser
+- `Super + Shift + B`: Browser (private/incognito)
+- `Super + F`: File manager
+- `Super + T`: Activity monitor (btop)
+- `Super + M`: Music (Spotify)
+- `Super + /`: Password manager (1Password)
+- `Super + N`: Neovim
+- `Super + C`: Calendar (HEY)
+- `Super + E`: Email (HEY)
+- `Super + A`: AI (ChatGPT)
+- `Super + G`: Messenger (Signal)
+- `Super + Shift + G`: WhatsApp
+- `Super + D`: Docker (LazyDocker)
+- `Super + O`: Obsidian
+- `Super + X`: X (Twitter)
+- `Super + Y`: YouTube
+
+**Capture:**
+- `Print Screen`: Screenshot region
+- `Shift + Print Screen`: Screenshot window
+- `Ctrl + Print Screen`: Screenshot monitor
+- `Alt + Print Screen`: Start/stop screenrecord region
+- `Super + Print Screen`: Color picker
+- `Alt + Shift + L`: Copy current URL from webapp/Chromium
+
+**Notifications:**
+- `Super + ,`: Dismiss latest notification
+- `Shift + Super + ,`: Dismiss all notifications
+- `Ctrl + Super + ,`: Toggle silence notifications
+
+**Style:**
+- `Ctrl + Shift + Super + Space`: Pick new theme
+- `Ctrl + Super + Space`: Next background image
+- `Super + Backspace`: Toggle window transparency
+
+**Toggles:**
+- `Ctrl + Super + I`: Toggle idle/sleep prevention
+- `Ctrl + Super + N`: Toggle nightlight
+- `Shift + Super + Space`: Toggle top bar
+- `Super + Mute`: Switch audio output
+
+**File Manager:**
+- `Ctrl + L`: Go to path
+- `Space`: Preview file
+- `Backspace`: Go back
+
+**Apple Display Brightness:**
+- `Ctrl + F1`: Decrease brightness
+- `Ctrl + F2`: Increase brightness
+- `Ctrl + Shift + F2`: Maximum brightness
+
+**Quick Emojis** (CapsLock + M + letter):
+- S=😄 C=😂 L=😍 V=✌️ H=❤️ Y=👍 N=👎 F=🖕 W=🤞 R=🤘 K=😘 E=🙄 P=🙏 D=🤤 M=💰 X=🎉 1=💯 T=🥂 O=👌 G=👋 A=💪 B=🤯
+- `Super + Ctrl + E`: Full emoji picker
+
+**Quick Completions** (CapsLock + Space + key):
+- Space Space: — (mdash)
+- N: Your name
+- E: Your email
+- Edit ~/.XCompose for custom completions, run `omarchy-restart-xcompose` to apply
+
+## Key Applications
+
+**Neovim:** Terminal-based editor with LazyVim distribution. Start with `Super + N` or `n` in terminal.
+
+**Shell Tools:**
+- **fzf:** Fuzzy find files with `ff`, search history with `Ctrl + R`
+- **zoxide:** Smart cd replacement, remembers directories
+- **ripgrep:** Search file contents with `rg pattern path`
+- **eza:** Better ls (aliases: ls, lt, lsa, lta)
+- **fd:** Easier find, e.g., `fd person.rb /`
+- **lazygit:** Git TUI, run from directory or `Space G G` in Neovim
+- **lazydocker:** Docker TUI, start with `Super + D`
+- **btop:** Activity monitor, start with `Super + T`
+- **fastfetch:** System info (About in Omarchy menu)
+
+**Shell Functions:**
+- `compress [file.tar.gz]` / `decompress [file.tar.gz]`
+- `iso2sd [image.iso] [/path/to/sdcard]`: Create bootable drive
+- `format-disk [/dev/drive]`: Format disk with ext4
+- `img2jpg`, `img2jpg-small`, `img2png`: Image conversion
+
+**GUIs:**
+- **Obsidian:** Note-taking with Markdown (`Super + O`)
+- **Pinta:** Basic image editing
+- **LocalSend:** File sharing across devices (like AirDrop)
+- **LibreOffice:** Office suite
+- **Signal:** E2E encrypted messaging (`Super + G`)
+- **mpv:** Media player
+- **OBS Studio:** Screen recording/streaming
+- **Kdenlive:** Video editor
+
+**Commercial Apps:**
+- **1Password:** Password manager (`Super + /`)
+- **Typora:** Minimal Markdown writing ($15 one-time, 15-day trial)
+- **Dropbox:** File sync (Install > Service > Dropbox)
+- **Tailscale:** Mesh VPN (Install > Service > Tailscale)
+- **Spotify:** Music streaming (`Super + M`)
+
+## Neovim
+
+Omarchy uses **LazyVim**, a complete Neovim distribution with plugins and configurations.
+
+**Basic Commands** (Space = leader key):
+- `Space`: Show command options
+- `Space Space`: Fuzzy-find files
+- `Space S G`: Grep search with preview
+- `Space E`: Toggle file tree
+- `Ctrl + W W`: Jump between sidebar and editor
+- `Shift + H/L`: Navigate between tabs (buffers)
+- `Space B D`: Close tab
+- `Space B O`: Close all other tabs
+- `Space G G`: Launch LazyGit
+- `Space U W`: Toggle soft wrap
+
+**File Tree Commands:**
+- `a`: Add new file
+- `A`: Add new directory
+- `D`: Delete
+- `M`: Move
+- `R`: Rename
+- `?`: Show all commands
+
+**Starting Neovim:**
+- `Super + N` or `n` in terminal (opens current directory)
+- `n myfile.txt` to open specific file
+- `sudoedit /path/to/file` for sudo edits with plugins
+
+Full keymaps: LazyVim documentation
+
+## Shell Tools
+
+**fzf:** Fuzzy finding
+- `ff`: Fuzzy find files with preview
+- `Ctrl + R`: Search command history
+- Used by Neovim (`Space Space`)
+- Manual: `man fzf`
+
+**Zoxide:** Smart directory navigation
+- Remembers visited directories
+- `cd omarchy` jumps to ~/.local/share/omarchy after first visit
+- Manual: `man zoxide`
+
+**ripgrep:** Fast file content search
+- `rg Controller app/`: Find "Controller" in app/ directory
+- Used by Neovim (`Space S G`)
+- Manual: `man rg`
+
+**eza:** Enhanced directory listings
+- Aliased as `ls` by default
+- `lt`: Two-level nested listing
+- `lsa`: Include hidden files
+- `lta`: Nested with hidden files
+- Manual: `man eza`
+
+**fd:** User-friendly find
+- `fd person.rb`: Find in current tree
+- `fd person.rb /`: Search entire filesystem
+- `fd person.rb / -H`: Include hidden directories
+- Manual: `man fd`
+
+**Lazygit:** Git TUI
+- Run `lazygit` in git directory or `Space G G` in Neovim
+- `Tab`: Switch panes
+- `Space`: Stage files
+- `c`: Create commit
+- `?`: Show all commands
+
+**Lazydocker:** Docker TUI
+- Start with `Super + D`
+- `s`: Stop container
+- `r`: Start/restart container
+- `?`: Show all commands
+
+**Btop:** Resource manager
+- Shows CPU, memory, disk, network usage
+- Start with `Super + T` or "Activity" in app launcher
+
+**Impala:** Wi-Fi TUI
+- Click Wi-Fi icon in top bar
+- `Tab`: Switch sections
+- `Space`: Select network
+- Enter password and press `Return`
+
+**Fastfetch:** System information
+- Shows kernel, uptime, theme, CPU, memory
+- "About" in Omarchy menu
+
+## Configuration
+
+**Dotfiles Structure:**
+- `~/.config/*`: Your configuration files (edit these)
+- `~/.local/share/omarchy`: Omarchy internals (don't edit directly)
+
+**Key Configuration Files:**
+
+| File | Purpose |
+|------|---------|
+| `~/.config/hypr/hyprland.conf` | Keybindings, default apps, Hyprland settings |
+| `~/.config/hypr/monitors.conf` | Monitor resolution and position |
+| `~/.config/hypr/input.conf` | Keyboard, mouse, trackpad settings |
+| `~/.config/hypr/hypridle.conf` | Idle/sleep settings |
+| `~/.config/hypr/hyprlock.conf` | Lock screen (symlinked to theme) |
+| `~/.config/waybar/config.jsonc` | Top bar configuration |
+| `~/.config/waybar/style.css` | Top bar styling (symlinked to theme) |
+| `~/.config/walker/config.toml` | Application launcher settings |
+| `~/.config/alacritty/alacritty.toml` | Terminal configuration |
+| `~/.config/uwsm/default` | Default $EDITOR and $TERMINAL (requires Hyprland relaunch) |
+| `~/.XCompose` | Quick emoji and autocomplete (run `omarchy-restart-xcompose` after edits) |
+| `~/.bashrc` | Custom aliases, functions, exports (safe to edit) |
+
+**Editing Configs:**
+Use `Setup > Configs > [process]` in Omarchy menu (`Super + Alt + Space`). Process auto-restarts after saving (`:wq` in Neovim).
+
+**Backup Dotfiles:**
+Use Stow to backup your dotfiles if you make extensive changes.
+
+**Changing Omarchy Defaults:**
+Override in `~/.config/*` instead of editing `~/.local/share/omarchy` directly. Example: Change Obsidian hotkey to Joplin in `~/.config/hypr/hyprland.conf`:
+```
+bind = SUPER, O, exec, joplin
+```
+
+**Keyboard/Mouse/Trackpad:**
+Edit `~/.config/hypr/input.conf` or `Setup > Input` in Omarchy menu.
+
+Example configurations:
+```
+input {
+  # Multiple layouts, switch with Alt + Space
+  kb_layout = us,dk
+  kb_options = compose:caps,grp:alt_space_toggle
+
+  # Keyboard repeat speed
+  repeat_rate = 40
+  repeat_delay = 600
+
+  # Mouse/trackpad sensitivity
+  sensitivity = 0.35
+
+  touchpad {
+    natural_scroll = true
+    clickfinger_behavior = true
+    scroll_factor = 0.3
+  }
+}
+
+# Faster terminal scrolling
+windowrule = scrolltouchpad 1.5, tag:terminal
+```
+
+**Use ALT as SUPER:**
+```
+input {
+  kb_options = compose:caps,altwin:swap_alt_win
+}
+```
+
+**Fingerprint Authentication:**
+Setup: `Setup > Security > Fingerprint` in Omarchy menu
+- Works for lock screen, sudo, system prompts
+- Hit `Ctrl + C` during sudo if using external keyboard without sensor
+- Remove: `Remove > Fingerprint` in Omarchy menu
+
+**Fido2 Authentication:**
+Setup: `Setup > Security > Fido2` (sudo only, not for unlocking)
+Remove: `Remove > Fido2`
+
+**Fonts:**
+Default: Caskaydia Mono Nerd Font (terminal and system)
+- Change terminal font: `Style > Font` in Omarchy menu
+- Install more fonts: `Install > Style > Font`
+
+**Backgrounds:**
+Location: `~/.config/omarchy/[theme]/backgrounds`
+- Add images to theme folder to include in rotation
+- Cycle backgrounds: `Super + Ctrl + Space`
+- Easy install: `Install > Style > Background` in Omarchy menu
+- Curated backgrounds: https://github.com/dharmx/walls
+
+**Prompt:**
+Omarchy uses minimal Starship prompt. Customize in `~/.config/starship.toml`
+
+## Monitors & Display
+
+**Default Settings:**
+Omarchy assumes 2x retina-class display (218+ PPI) with 2x scaling.
+
+**Common Configurations:**
+Edit `~/.config/hypr/monitors.conf`:
+
+**27" or 32" 4K display:**
+```
+env = GDK_SCALE,1.75
+monitor=,preferred,auto,1.666667
+```
+
+**1080p or 1440p display:**
+```
+env = GDK_SCALE,1
+monitor=,preferred,auto,1
+```
+
+**Note:** Changes to GDK_SCALE apply to newly started apps. Close existing windows (`Ctrl + Alt + Del`) after changing.
+
+**Multiple Screens:**
+- Hyprland supports multiple screens well
+- Configure layout in `~/.config/hypr/monitors.conf`
+- See Hyprland monitor documentation for details
+- Bind workspaces to specific monitors
+- Try Hyprmon TUI for positioning help
+
+**Display Quality:**
+Best experience with 218+ PPI displays and 2x scaling. Lower resolution displays may have font rendering issues due to fractional scaling.
+
+## Themes
+
+**Built-in Themes (11):**
+Tokyo Night, Catppuccin, Everforest, Gruvbox, Osaka Jade, Kanagawa, Nord, Matte Black, Ristretto, Rose Pine, Catppuccin Latte
+
+**Theme Selection:**
+- `Style > Theme` in Omarchy menu
+- `Super + Ctrl + Shift + Space` for direct selector
+
+**Theme Coverage:**
+Each theme styles: desktop, terminal, Neovim, btop, notifications (mako), top bar (waybar), app launcher (walker), lock screen (hyprlock)
+
+**Backgrounds:**
+- Cycle with `Super + Ctrl + Space`
+- Located in `~/.config/omarchy/current/backgrounds`
+- Add custom images to this folder
+
+**Extra Themes:**
+Install community themes: `Install > Style > Theme` with GitHub URL
+Remove: `Remove > Style > Theme`
+
+**Popular Extra Themes:**
+Aetheria, Arc Blueberry, Archwave, Ash, Aura, Dracula, Monokai, Nord, Solarized, Synthwave '84, and 50+ more available
+
+**Creating Custom Themes:**
+1. Copy existing theme in `~/.config/omarchy/themes`
+2. Customize to your preferences
+3. Add empty `light.mode` file for light themes
+4. Add `icons.theme` file with icon set name (default: Yaru variants)
+5. Distribute via GitHub (naming: `omarchy-[themename]-theme`)
+6. Submit to extra themes page via Discord @tahavr
+
+## Development
+
+**Editors:**
+- Default: Neovim with LazyVim
+- Optional: VSCode, Cursor, Zed, Sublime Text, Helix
+- Install: `Install > Editor` in Omarchy menu
+- Set default: `Setup > Defaults` (requires Hyprland relaunch)
+
+**Terminals:**
+- Default: Alacritty
+- Optional: Ghostty, Kitty
+- Install/switch: `Install > Terminal`
+- Note: Keep Alacritty installed (used for screensaver and control panels)
+
+**Development Environments:**
+Managed by **Mise** (multi-version runtime manager):
+- Available: Ruby on Rails, Node.js, bun, Deno, PHP (Laravel/Symfony), .NET, OCaml, Zig, Elixir
+- Install: `Install > Development` in Omarchy menu
+- Usage: `mise use -g ruby@3.3` (installs and sets global default)
+- Project-specific: `mise i` in directory with `.ruby-version` file
+
+**Docker:**
+- Includes Docker, Docker Compose, user group configuration
+- Run as normal user (no sudo needed)
+- Manage with LazyDocker TUI (`Super + D`)
+- Setup databases: `Install > Development > Docker DB`
+
+**GitHub CLI:**
+- Authenticate: `gh auth login`
+- Clone private repos: `gh repo clone org/repo`
+- Run `gh` to see all operations
+
+## Packages & Updates
+
+**Installing Packages:**
+- Arch packages: `Install > Package` in Omarchy menu (or `sudo pacman -S [package]`)
+- AUR packages: `Install > AUR` (community repository, like npm/RubyGems)
+- Both use fuzzy filtering for easy search
+
+**Removing Packages:**
+- `Remove > Package` in Omarchy menu (or `sudo pacman -Rns [package]`)
+- Removes package, config files, and dependencies
+
+**Updates:**
+- `Update > Omarchy` in Omarchy menu
+- Updates: Omarchy code, system packages, Arch repository, Omarchy Package Repository, AUR
+- Circle arrow icon appears in top bar when updates available
+- Click icon to start update process
+
+**Package Sources:**
+- Omarchy relies on Arch core/extra/multilib and Omarchy Package Repository by default
+- AUR available but not used by default (even for optional installs)
+
+## Web Apps
+
+**Installing Web Apps:**
+1. `Install > Web App` in Omarchy menu
+2. Provide: app name, app URL, icon URL
+3. Icons: Get PNGs from Dashboard Icons (dashboardicons.com)
+4. Access via app launcher (`Super + Space`)
+5. Uses frameless web-app window
+
+**Removing Web Apps:**
+`Remove > Web App` in Omarchy menu
+
+**Tips:**
+- Log into accounts in regular browser first (1Password doesn't work well in web app wrapper)
+- Copy current URL: `Shift + Alt + L`
+- Change hotkeys: Edit `~/.config/hypr/bindings.conf`
+
+**Pre-installed Web Apps:**
+
+**HEY:** Email and calendar service (37signals)
+- Email: `Super + E`
+- Calendar: `Super + C`
+
+**Basecamp:** Project management (37signals)
+- Launch via app launcher
+
+**ChatGPT:** AI chatbot
+- `Super + A`
+
+**WhatsApp:** Messaging
+- `Super + Shift + G`
+
+**X (Twitter):** Social media
+- View: `Super + X`
+- New post: `Super + Shift + X`
+
+**YouTube:** Video platform
+- `Super + Y`
+
+**Zoom:** Video conferencing
+- Launch via app launcher
+
+## Gaming
+
+**Steam:** Modern games
+- Install: `Install > Gaming > Steam` (choose GPU package: AMD iGPU, Nvidia, or Radeon)
+- Launch: Type "steam" in app launcher (`Super + Space`)
+- Note: 10-20 second startup, no visual feedback while loading
+- Proton compatibility layer enables tens of thousands of games on Linux
+
+**RetroArch:** Retro games
+- Install: `Install > Gaming > RetroArch`
+- Launch: Type "retro" in app launcher
+- Fullscreen: `retroarch --fullscreen` from terminal
+
+**Minecraft:**
+- Install: `Install > Gaming > Minecraft`
+- Note: Login and startup may take time without feedback
+
+**Note:** Steam Deck runs on Arch, same as Omarchy!
+
+## Security
+
+**Security Features:**
+
+1. **Full-disk encryption (mandatory):** LUKS encryption protects data if laptop lost/stolen
+2. **Firewall enabled by default:** Blocks all incoming traffic except:
+   - Port 22 (SSH)
+   - Port 53317 (LocalSend)
+   - Docker access locked down with ufw-docker
+3. **Rolling updates:** Arch provides immediate security patches for all packages
+4. **Trusted package sources:** Only Arch core/extra/multilib and Omarchy Package Repository by default
+5. **Cloudflare protection:** ISOs, packages, and mirror protected by Cloudflare DDoS shield and CDN
+
+**ISO Signatures:**
+Verify any ISO by adding `.sig` to URL: `https://iso.omarchy.org/omarchy-online.iso.sig`
+
+## Troubleshooting
+
+**Apps too large on display:**
+- Issue: GDK_SCALE set to 2 for high-res displays
+- Fix: Change to 1 in `~/.config/hypr/monitors.conf` for 1x displays
+- Restart oversized apps after change
+
+**Caps Lock not working:**
+- Caps Lock is xcompose key for quick emojis and autocompletions
+- To change: Edit `~/.config/hypr/input.conf`, set to right alt: `kb_options = compose:ralt`
+
+**External speakers not playing:**
+- Click speaker icon in top right waybar
+- Set speakers as default with "d" key
+
+**Password login/sudo locked out:**
+- Too many wrong attempts triggered lockout
+- On lock screen: Hit `Ctrl + Alt + F2` for new TTY
+- Login as root
+- Run: `faillock --reset --user [your-username]`
+
+**1Password prompts not appearing:**
+1. Enable `Settings > Advanced > Use Hardware Acceleration` (requires reboot)
+2. Launch 1Password at least once after boot for prompts to work
+
+**12-hour clock format:**
+Edit `~/.config/waybar/config.jsonc`:
+```json
+"clock": {
+  "format": "{:%A %I:%M %p}",
+```
+Displays: "Sunday 10:55 AM"
+
+**Switch keyboard layouts:**
+Edit `~/.config/hypr/input.conf`:
+```
+input {
+  kb_layout = us,fr
+  kb_options = compose:caps,grp:alts_toggle
+}
+```
+Switch with Left Alt + Right Alt. Show current layout in Waybar (see Waybar docs).
+
+**Apple Studio Display speakers/webcam:**
+- Standard USB-C doesn't work reliably
+- Use WJESOG DisplayPort + USB-A => USB-C cable
+- Brightness control: `Ctrl + F1` (down), `Ctrl + F2` (up), `Ctrl + Shift + F2` (max)
+
+**Remove preinstalled software:**
+- Packages: `Remove > Package` (select with tab, remove with return)
+- Web apps: `Remove > Web App`
+
+## Mac Support
+
+**Intel Mac Support (v3.0.0+):**
+Omarchy has built-in Intel Mac support with known limitations.
+
+**Installation:**
+1. Disable Secure Boot:
+   - Turn off Mac
+   - Turn on, hold Command-R until loading screen
+   - Select user, enter password
+   - `Utilities > Startup Security Utility`
+   - Set "No Security" for Secure Boot
+   - Allow "booting from external or removable media"
+2. Insert USB drive
+3. Restart, hold Option key
+4. Select orange EFI Boot device
+5. Proceed with normal installation
+
+**Known Limitations:**
+
+**T1 Chip** (2016 MacBook Pro with Touch Bar):
+- Models: A1706, A1708, A1707
+- Issues: Touch Bar non-functional, sleep broken, no sound
+
+**T2 Chip** (2017-2020 Intel Macs):
+- Models: iMac Pro, MacBook Pro/Air, Mac mini (2018-2020)
+- Issues: Sleep broken
+
+**M-Series Macs:**
+Not directly supported. See #omarchy-on-other Discord for Asahi Alarm options.
+
+**Performance:**
+36% performance gains observed on 2019 MacBook Pro running Omarchy vs macOS.
+
+**Restore macOS:**
+Use Internet Recovery if needed.
+
+## Compatibility
+
+**Asahi Alarm (Apple M1/M2):**
+Run Omarchy on Apple Silicon via Asahi Linux. See user-driven guide in Discord.
+
+**Virtual Machines:**
+- Parallels (Mac): User-driven guide available
+- VirtualBox: Supported but performance may be limited
+- VMware Workstation (Windows 11): Setup guide available
+
+**CachyOS:**
+Performance-optimized Arch fork. Guide available for running Omarchy on CachyOS.
+
+**Steam Deck:**
+Full setup script by Altynbek Orumbayev. Omarchy runs on Steam Deck!
+
+**NixOS:**
+Community port by Henry Sipp. May not stay current with Omarchy updates.
+
+**Other Configurations:**
+Join #omarchy-on-other Discord channel for help with non-default setups.
+
+## Resources
+
+- **Website:** omarchy.org
+- **Manual:** learn.omacom.io
+- **Discord:** Community support channels (#omarchy-install-help, #omarchy-on-other)
+- **Updates:** Circle arrow icon in top bar when available
+- **Documentation:** Hyprland wiki, LazyVim keymaps, Waybar configs, Alacritty configs
+```
