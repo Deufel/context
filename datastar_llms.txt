@@ -1,0 +1,293 @@
+# Datastar Framework - Technical Reference
+
+## Core Concept
+Backend-driven hypermedia framework combining htmx-style backend reactivity with Alpine.js-style frontend reactivity via `data-*` attributes and Server-Sent Events. Backend = source of truth; frontend = reactive view layer.
+
+## Architecture
+
+**Dual Reactivity:**
+- Backend→Frontend: SSE streams patch DOM/signals
+- Frontend: Reactive signals (`$name`) with auto-dependency tracking
+
+**Installation:** Single CDN script tag, no dependencies
+```html
+<script type="module" src="https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"></script>
+```
+
+## Signals (Reactive State)
+
+**Syntax:** `$signalName` (global), `$$signalName` (component-scoped in Rocket)
+
+**Creation:**
+- `data-bind:foo` - auto-creates, two-way binds to input value
+- `data-signals:foo="value"` - explicit creation
+- `data-computed:foo="expr"` - derived read-only signal
+- Auto-created on first use (defaults to empty string)
+
+**Nesting:** `$foo.bar.baz` via dot notation or `{foo: {bar: {baz: val}}}`
+
+**Local signals:** Prefix `_` excludes from backend requests (e.g., `$_loading`)
+
+**Transmission:** All non-local signals auto-sent with every request:
+- GET: `datastar` query param (JSON)
+- Other methods: JSON body
+
+**Patching:** Backend patches signals via `application/json` response or `datastar-patch-signals` SSE event (JSON Merge Patch RFC 7396)
+
+## Data Attributes (Declarative Reactivity)
+
+**Core Attributes:**
+- `data-bind:name` - Two-way binding (input↔signal). Supports type preservation, file uploads (base64), arrays
+- `data-text="expr"` - Sets text content
+- `data-computed:name="expr"` - Creates derived signal
+- `data-show="expr"` - Toggles visibility (true/false)
+- `data-class:className="expr"` - Conditional class
+- `data-attr:attrName="expr"` - Dynamic attribute
+- `data-style:prop="expr"` - Dynamic inline styles
+- `data-on:event="expr"` - Event listener with expression
+- `data-signals:name="value"` - Patch signals
+- `data-ref:name` - Creates signal referencing element
+- `data-init="expr"` - Runs on element initialization
+- `data-effect="expr"` - Runs on load and when dependencies change
+- `data-indicator:name` - Sets signal true during fetch, false otherwise
+
+**Advanced Attributes:**
+- `data-on-intersect="expr"` - Viewport intersection observer
+- `data-on-interval="expr"` - Regular interval execution (default 1s)
+- `data-on-signal-patch="expr"` - Reacts to signal patches
+- `data-on-signal-patch-filter="{include: /regex/, exclude: /regex/}"` - Filters watched signals
+- `data-json-signals` - Debug display of signals as JSON
+- `data-ignore` - Exclude element/descendants from Datastar processing
+- `data-ignore-morph` - Exclude from morphing
+- `data-preserve-attr="attr1 attr2"` - Preserve attributes during morph
+
+**Casing Rules:**
+- Signal-defining attributes (`data-bind:*`, `data-signals:*`, `data-computed:*`): hyphens→camelCase (`my-signal`→`$mySignal`)
+- Other attributes: default kebab-case, `__case` modifier overrides (`.camel`, `.kebab`, `.snake`, `.pascal`)
+
+**Modifiers:** `__modifier.tag` syntax:
+- `__delay.500ms` / `__delay.1s` - Delay execution
+- `__debounce.500ms.leading.notrailing` - Debounce
+- `__throttle.500ms.noleading.trailing` - Throttle
+- `__once` - Execute once
+- `__window` - Attach to window
+- `__outside` - Trigger when event outside element
+- `__prevent` - preventDefault
+- `__stop` - stopPropagation
+- `__viewtransition` - Wrap in View Transition API
+- `__ifmissing` - Only patch if signal missing
+
+## Expressions
+
+JavaScript-like syntax evaluated in sandboxed `Function()` constructor context. Support:
+- Signal access: `$foo`, nested: `$foo.bar`
+- Element reference: `el` (current element)
+- Event object: `evt` (in event handlers)
+- JS operators: ternary, logical AND/OR, etc.
+- Multiple statements: semicolon-separated
+- Actions: `@actionName()`
+
+**External JS Integration:**
+- External scripts: pass data via arguments, return results or dispatch custom events
+- Web components: pass props via attributes, listen for custom events
+- Pattern: "props down, events up"
+
+## Actions (Helper Functions)
+
+**Utility:**
+- `@peek(() => expr)` - Access signals without subscribing
+- `@setAll(value, {include: /regex/, exclude: /regex/})` - Set multiple signals
+- `@toggleAll({include: /regex/, exclude: /regex/})` - Toggle boolean signals
+
+**Backend Actions:**
+- `@get(uri, opts)`, `@post(uri, opts)`, `@put(uri, opts)`, `@patch(uri, opts)`, `@delete(uri, opts)`
+
+**Options:**
+- `contentType`: `'json'` (default) or `'form'`
+- `filterSignals`: `{include: /.*/, exclude: /(^_|\\._).*/}` (default excludes `_` prefix)
+- `selector`: CSS selector for form (when contentType='form')
+- `headers`: Custom headers object
+- `openWhenHidden`: Keep connection open when page hidden (default false for GET, true otherwise)
+- `payload`: Override fetch payload
+- `retry`: `'auto'` (network errors), `'error'` (4xx/5xx), `'always'`, `'never'`
+- `retryInterval`, `retryScaler`, `retryMaxWaitMs`, `retryMaxCount`: Retry configuration
+- `requestCancellation`: `'auto'` (cancel existing), `'disabled'`, or AbortController
+
+**Events:** `datastar-fetch` events: `started`, `finished`, `error`, `retrying`, `retries-failed`
+
+## Backend Communication
+
+**Request Headers:** `Datastar-Request: true`
+
+**Response Types:**
+- `text/event-stream` - SSE with 0-n Datastar events (recommended)
+- `text/html` - Morph top-level elements by ID
+- `application/json` - Patch signals
+- `text/javascript` - Execute script
+
+**Response Headers (non-SSE):**
+- `datastar-selector` - CSS selector for target
+- `datastar-mode` - Patch mode
+- `datastar-use-view-transition` - Enable view transitions
+- `datastar-only-if-missing` - Conditional signal patch
+- `datastar-script-attributes` - Script element attributes (JSON)
+
+## SSE Events
+
+**Format:**
+```
+event: event-name
+data: key value
+data: key value
+
+```
+
+**`datastar-patch-elements`:**
+```
+event: datastar-patch-elements
+data: selector #target
+data: mode outer
+data: namespace html
+data: useViewTransition false
+data: elements <div>...</div>
+
+```
+- Modes: `outer` (default), `inner`, `replace`, `prepend`, `append`, `before`, `after`, `remove`
+- Namespaces: `html` (default), `svg`, `mathml`
+
+**`datastar-patch-signals`:**
+```
+event: datastar-patch-signals
+data: onlyIfMissing false
+data: signals {foo: 1, bar: null}
+
+```
+- `null` values remove signals
+- Uses JSON Merge Patch (RFC 7396)
+
+## DOM Morphing
+
+**Strategy:** Idiomorphic diffing (default). Only modified DOM parts updated, preserving state.
+- Match elements by ID
+- Reapply changed attributes only
+- Preserve event listeners, CSS transitions
+- Supports "fat morph" - send entire `<html>` tag
+- SVG requires special namespace handling
+
+**Evaluation Order:**
+- Depth-first DOM walk
+- Attributes applied in appearance order
+- Reapplied after DOM patches that change them
+
+## CQRS Pattern
+
+Single long-lived GET for reads (updates), multiple short-lived requests for writes (commands). Example:
+```html
+<div data-init="@get('/updates')">
+  <button data-on:click="@post('/action')">Action</button>
+</div>
+```
+
+## Rocket (Pro Feature - Alpha)
+
+**Purpose:** Bridge Web Components with Datastar reactivity. Use sparingly - only for encapsulation needs.
+
+**Definition:**
+```html
+<template data-rocket:my-component
+          data-props:count="int|min:0|=0"
+          data-shadow-open>
+  <script>
+    $$count = 0  // Component-scoped signal
+    $theme = 'dark'  // Global signal
+  </script>
+  <button data-on:click="$$count++">
+    <span data-text="$$count"></span>
+  </button>
+</template>
+```
+
+**Signal Scoping:**
+- `$$signal` - Component-scoped (auto-namespaced: `$._rocket.component_name.id1.signal`)
+- `$signal` - Global page-level
+- Auto-cleanup on component removal
+
+**Props:** `data-props:name="codec|validators|=default"`
+- Type codecs: `string`, `int`, `float`, `date`, `boolean`, `json`, `js`, `binary`
+- Validators: `required`, `min:n`, `max:n`, `clamp:min,max`, `oneOf:a,b,c`, `minLength:n`, `maxLength:n`, `regex:pattern`, `trim`, `upper`, `lower`, etc.
+- `!` suffix = validation-only (reject vs transform)
+- Errors in `$$errs` object, `$$hasErrs` boolean
+
+**Setup Scripts:**
+- `<script>` - Per-instance setup
+- `<script data-static>` - One-time registration
+- `el` binding - host element reference
+- `onCleanup(() => {})` - Cleanup callbacks
+- `computed(() => expr)` - Computed values
+- `effect(() => {})` - Side effects
+
+**Module Imports:**
+- `data-import:alias="url"` - ESM import
+- `data-import:alias__iife="url"` - Legacy global
+
+**Rocket Attributes:**
+- `data-shadow-open` / `data-shadow-closed` - Shadow DOM mode
+- `data-if="expr"` - Conditional (template only)
+- `data-else-if="expr"` - Chained conditional
+- `data-else` - Fallback conditional
+- `data-for="item, index in items"` - Loop iteration
+- `data-key="item.id"` - Keyed loop (Solid-style)
+
+## Philosophy (Tao)
+
+**State:** Backend = source of truth. Frontend state = minimal (UI toggles, form inputs only)
+
+**Defaults:** Start with defaults. Question changes.
+
+**Signals:** Use sparingly. Fetch current state vs pre-loading.
+
+**Morphing:** Trust morph. Send large DOM chunks. Use `data-ignore-morph` to exclude.
+
+**SSE:** Prefer `text/event-stream` for all responses. 0-n events, long-lived connections.
+
+**Compression:** Brotli compression ~200:1 ratio on SSE streams.
+
+**Templating:** Use backend templating to stay DRY.
+
+**Navigation:** Standard `<a>` tags. View Transition API for smooth transitions. Let browser manage history.
+
+**Loading Indicators:** Show with `data-indicator`. Confirm success from backend only.
+
+**Optimistic Updates:** Discouraged. Use loading indicators instead. Don't deceive users.
+
+## Security
+
+**XSS Prevention:** Always escape user input in templates. Never trust client data.
+
+**Sensitive Data:** Don't expose in signals (visible in source, user-modifiable).
+
+**Unsafe Input:** Use `data-ignore` if escaping impossible.
+
+**CSP:** Requires `unsafe-eval` for script-src (Function() constructor usage).
+
+## Best Practices
+
+- Attributes evaluated left-to-right in DOM
+- `data-indicator` must precede `data-init` when used together
+- Hyphenated HTML attributes case-insensitive per spec
+- All signals sent by default; filter with `filterSignals` option
+- File uploads: `data-bind` auto-base64 encodes; use `multipart/form-data` for server upload
+- View Transitions: automatic with `useViewTransitions` option
+- Error handling: Runtime errors logged with context-aware error pages
+- SDKs available: Clojure, C#, Go, Java, Kotlin, PHP, Python, Ruby, Rust, TypeScript
+
+## Key Differentiators
+
+- SSE for all HTTP methods (not just GET)
+- Every fragment = OOB (out-of-band) in htmx terms
+- Morphing preserves state better than innerHTML replacement
+- Signals globally accessible (except Rocket `$$`)
+- No build step required (optional bundler available)
+- Aliasing support (`data-star-*`) for legacy conflicts
+
+This is comprehensive, dense technical documentation covering Datastar's mechanisms without redundancy. Every sentence provides technical value.
