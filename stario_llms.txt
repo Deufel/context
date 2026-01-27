@@ -1,0 +1,190 @@
+## Stario Technical Reference
+
+### Core Architecture
+
+**Handler Signature** — Every handler is `async def handler(c: Context, w: Writer) -> None`:
+- `c` (Context): request data, signals, query params, tracing
+- `w` (Writer): send responses — `html()`, `patch()`, `redirect()`, `empty()`
+
+**App Setup** — Requires a tracer:
+```python
+with RichTracer() as tracer:  # or JsonTracer for prod
+    app = Stario(tracer)
+    app.get("/", handler)
+    app.post("/action", handler)
+    await app.serve(host="0.0.0.0", port=8000)
+```
+
+---
+
+### HTML Elements
+
+Import from `stario.html`. Call like functions — first arg is optional attrs dict:
+```python
+Div({"class": "foo", "id": "bar"}, "child text", ChildElement())
+```
+
+Style can be a dict: `{"style": {"background-color": "#abc"}}` → `style="background-color: #abc"`
+
+---
+
+### Datastar Integration
+
+**Signals** — Reactive client-side state, auto-sent with every `@get`/`@post`:
+```python
+data.signals({"count": 0, "name": ""}, ifmissing=True)  # ifmissing preserves on re-render
+```
+
+**Binding** — Two-way bind inputs to signals:
+```python
+Input(data.bind("username"))
+```
+
+**Actions** — Trigger requests:
+```python
+data.on("click", at.post("/add"))
+data.on("click", at.get("/fetch"))
+data.init(at.get("/subscribe", retry="always"))  # runs on element mount
+```
+
+**Conditional Display**:
+```python
+data.show("$compact")      # show when signal is truthy
+data.show("!$compact")     # show when signal is falsy
+```
+
+**Loading Indicators**:
+```python
+data.indicator("loading")  # sets $loading=true during fetch
+```
+
+---
+
+### Response Methods
+
+**One-shot responses**:
+```python
+w.html(page_view())        # full HTML page
+w.redirect("/")            # redirect
+w.empty(204)               # no content (code after this still runs!)
+```
+
+**SSE Patching** — Morphs DOM by element ID:
+```python
+w.patch(element)                                    # patch by element's id
+w.patch(element, selector="#target")                # patch into specific selector
+w.patch(element, selector="#list", mode="append")   # append to element
+w.patch("", selector="#row-123", mode="remove")     # remove element
+```
+
+---
+
+### Reading Request Data
+
+**Signals** — Parse with a dataclass:
+```python
+@dataclass
+class MySignals:
+    username: str = ""
+    count: int = 0
+
+signals = await c.signals(MySignals)
+print(signals.username)
+```
+
+**Query Params**:
+```python
+value = c.req.query.get("param_name", "default")
+```
+
+---
+
+### Real-Time / SSE Pattern (CQRS)
+
+**Relay** — Pub/sub for broadcasting between connections:
+```python
+relay: Relay[str] = Relay()
+
+# Publisher (in POST handler):
+relay.publish("event_name", "payload")
+
+# Subscriber (in SSE handler):
+async for event, payload in w.alive(relay.subscribe("*")):
+    w.patch(updated_view())
+```
+
+**SSE Subscription Handler Pattern**:
+```python
+async def subscribe(c: Context, w: Writer) -> None:
+    w.patch(initial_view())  # send initial state
+    async for event, payload in w.alive(relay.subscribe("*")):
+        # loop yields on each publish, exits cleanly on disconnect
+        w.patch(updated_view())
+    # code here runs on disconnect (cleanup)
+```
+
+**Client-side SSE Connection** — Use `data.init` on page load:
+```python
+Div(
+    data.init(at.get("/subscribe", retry="always")),
+    content_view(),
+)
+```
+
+---
+
+### Optimistic UI Pattern
+
+1. POST handler returns `w.empty(204)` immediately + publishes event
+2. Subscribe handler appends loading row on "add" event
+3. Loading row has `data.init(at.get("/fetch-data"))` to lazy-load
+4. Fetch handler returns `w.empty(204)` + publishes "refresh"
+5. Refresh triggers full view re-render for everyone
+
+```python
+def loading_row(username):
+    return Tr(
+        {"id": f"row-{username}"},
+        data.init(at.get(f"/fetch?user={username}")),
+        Td(Span({"class": "loading loading-spinner"}), " Loading..."),
+    )
+```
+
+---
+
+### Gotchas / Surprises
+
+1. **`w.empty(204)` doesn't stop execution** — code after it still runs (useful for fire-and-forget)
+
+2. **Imports aren't top-level** — `Context`, `Writer` come from `stario`, not submodules
+
+3. **Python 3.14 required** — older Python versions have import issues
+
+4. **Datastar CDN matters** — use the correct version:
+   ```python
+   Script({"type": "module", "src": "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"})
+   ```
+
+5. **`{...}` is a set, not dict** — don't use as placeholder in `json=` args!
+
+6. **Race conditions** — when using optimistic UI + lazy fetch, check if item still exists before patching:
+   ```python
+   if username.lower() not in tracked_users:
+       w.empty(204)
+       return
+   ```
+
+7. **Full-page morph is simpler** — Datastar diffs efficiently, so re-patching entire views often beats targeted patches
+
+---
+
+### DaisyUI + Tailwind (via CDN)
+
+```python
+Link({"rel": "stylesheet", "href": "https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css"}),
+Script({"src": "https://cdn.tailwindcss.com"}),
+```
+
+Set theme on html: `Html({"data-theme": "forest"}, ...)`
+
+Useful classes: `btn btn-primary`, `input input-bordered`, `table table-zebra`, `card`, `badge`, `toggle`, `loading loading-spinner`
