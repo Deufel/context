@@ -1,190 +1,369 @@
-## Stario Technical Reference
+# Stario Reference
 
-### Core Architecture
+Python 3.14+. Real-time hypermedia. No JS frameworks.
 
-**Handler Signature** — Every handler is `async def handler(c: Context, w: Writer) -> None`:
-- `c` (Context): request data, signals, query params, tracing
-- `w` (Writer): send responses — `html()`, `patch()`, `redirect()`, `empty()`
-
-**App Setup** — Requires a tracer:
-```python
-with RichTracer() as tracer:  # or JsonTracer for prod
-    app = Stario(tracer)
-    app.get("/", handler)
-    app.post("/action", handler)
-    await app.serve(host="0.0.0.0", port=8000)
+```bash
+pip install stario
 ```
 
 ---
 
-### HTML Elements
+## Handler
 
-Import from `stario.html`. Call like functions — first arg is optional attrs dict:
+Every handler: `async def handler(c: Context, w: Writer) -> None`
+
+- `c` reads request data
+- `w` sends responses
+
 ```python
-Div({"class": "foo", "id": "bar"}, "child text", ChildElement())
-```
+from stario import Stario, RichTracer
 
-Style can be a dict: `{"style": {"background-color": "#abc"}}` → `style="background-color: #abc"`
-
----
-
-### Datastar Integration
-
-**Signals** — Reactive client-side state, auto-sent with every `@get`/`@post`:
-```python
-data.signals({"count": 0, "name": ""}, ifmissing=True)  # ifmissing preserves on re-render
-```
-
-**Binding** — Two-way bind inputs to signals:
-```python
-Input(data.bind("username"))
-```
-
-**Actions** — Trigger requests:
-```python
-data.on("click", at.post("/add"))
-data.on("click", at.get("/fetch"))
-data.init(at.get("/subscribe", retry="always"))  # runs on element mount
-```
-
-**Conditional Display**:
-```python
-data.show("$compact")      # show when signal is truthy
-data.show("!$compact")     # show when signal is falsy
-```
-
-**Loading Indicators**:
-```python
-data.indicator("loading")  # sets $loading=true during fetch
+async def main():
+    with RichTracer() as tracer:
+        app = Stario(tracer)
+        app.get("/", home)
+        await app.serve(port=8000)
 ```
 
 ---
 
-### Response Methods
+## Context (`c`)
 
-**One-shot responses**:
+**Request:**
 ```python
-w.html(page_view())        # full HTML page
-w.redirect("/")            # redirect
-w.empty(204)               # no content (code after this still runs!)
+c.req.method          # "GET", "POST"
+c.req.path            # "/users/123"
+c.req.query.get("q")  # query param
+c.req.tail            # path remainder for /* routes
+c.req.headers.get("X-Custom")
+c.req.cookies.get("session")
 ```
 
-**SSE Patching** — Morphs DOM by element ID:
+**Body:**
 ```python
-w.patch(element)                                    # patch by element's id
-w.patch(element, selector="#target")                # patch into specific selector
-w.patch(element, selector="#list", mode="append")   # append to element
-w.patch("", selector="#row-123", mode="remove")     # remove element
+await c.req.json()    # dict
+await c.req.form()    # multipart/urlencoded
+await c.req.body()    # bytes
+```
+
+**Signals** (Datastar state from client):
+```python
+signals = await c.signals()           # dict
+signals = await c.signals(MyClass)    # dataclass
+```
+
+**Tracing:**
+```python
+c["user_id"] = 42                     # span attribute
+with c.step("db.query") as s:         # child span
+    s["rows"] = count
+c("cache.miss")                       # event
+```
+
+**State** (middleware data):
+```python
+c.state["user"] = user
 ```
 
 ---
 
-### Reading Request Data
+## Writer (`w`)
 
-**Signals** — Parse with a dataclass:
+**One-shot:**
 ```python
-@dataclass
-class MySignals:
-    username: str = ""
-    count: int = 0
-
-signals = await c.signals(MySignals)
-print(signals.username)
+w.html(element)           # HTML response
+w.json({"ok": True})      # JSON
+w.text("plain")           # text
+w.redirect("/path")       # 307 redirect
+w.empty(204)              # no content (execution continues!)
 ```
 
-**Query Params**:
+**SSE streaming:**
 ```python
-value = c.req.query.get("param_name", "default")
+w.patch(element)                              # morph by element id
+w.patch(el, selector="#target")               # morph into selector
+w.patch(el, selector="#list", mode="append")  # append
+w.patch("", selector="#row", mode="remove")   # remove
+w.sync({"count": 5})                          # update signals
+w.navigate("/home")                           # client navigation
+w.execute("alert('hi')")                      # run JS
+w.remove("#error")                            # remove element
+```
+
+**Connection lifecycle:**
+```python
+async for event, data in w.alive(relay.subscribe("*")):
+    w.patch(view())
+# code here runs on disconnect
+```
+
+**Cookies/headers:**
+```python
+w.cookie("session", token, httponly=True, secure=True)
+w.delete_cookie("session")
+w.status(201).header("X-Id", "1").json(data)
 ```
 
 ---
 
-### Real-Time / SSE Pattern (CQRS)
+## HTML
 
-**Relay** — Pub/sub for broadcasting between connections:
 ```python
+from stario.html import Div, H1, P, A, Ul, Li, Input, Button, Form
+```
+
+First arg dict = attributes. Rest = children.
+
+```python
+Div({"class": "box", "id": "main"}, H1("Title"), P("Body"))
+Div({"style": {"color": "red"}}, "styled")      # style dict
+Div({"disabled": True})                          # boolean attr
+Div({"class": ["a", "b"]})                       # class="a b"
+```
+
+Auto-escapes strings. For trusted HTML:
+```python
+from stario.html import SafeString
+Div(SafeString("<svg>...</svg>"))
+```
+
+---
+
+## Datastar
+
+**Attributes (`data.*`):**
+```python
+data.signals({"count": 0}, ifmissing=True)  # init state
+data.bind("username")                        # two-way bind
+data.text("$count")                          # reactive text
+data.show("$visible")                        # conditional display
+data.show("!$loading")                       # negation
+data.on("click", "$count++")                 # expression
+data.on("click", at.post("/add"))            # server action
+data.on("input", at.get("/search"), debounce=0.3)
+data.init(at.get("/subscribe", retry="always"))
+data.indicator("loading")                    # $loading=true during fetch
+data.computed({"total": "$a + $b"})
+data.effect("console.log($count)")
+```
+
+**Actions (`at.*`):**
+```python
+at.get("/path")
+at.post("/path")
+at.post("/path", include=["field"], selector="#out")
+at.put("/path")
+at.patch("/path")
+at.delete("/path")
+```
+
+---
+
+## Routing
+
+```python
+app.get("/", home)
+app.post("/users", create)
+app.get("/users/*", get_user)     # c.req.tail = remainder
+
+# Sub-router
+api = Router()
+api.get("/items", list_items)
+app.mount("/api", api)
+
+# Middleware
+app.use(logger)                   # all routes
+app.get("/admin", page, auth)     # per-route (right-to-left)
+```
+
+---
+
+## Relay (Pub/Sub)
+
+```python
+from stario import Relay
+
 relay: Relay[str] = Relay()
 
-# Publisher (in POST handler):
-relay.publish("event_name", "payload")
+# Publish (sync, fire-and-forget)
+relay.publish("topic", payload)
 
-# Subscriber (in SSE handler):
-async for event, payload in w.alive(relay.subscribe("*")):
-    w.patch(updated_view())
+# Subscribe
+async for topic, data in w.alive(relay.subscribe("*")):
+    w.patch(render())
 ```
 
-**SSE Subscription Handler Pattern**:
-```python
-async def subscribe(c: Context, w: Writer) -> None:
-    w.patch(initial_view())  # send initial state
-    async for event, payload in w.alive(relay.subscribe("*")):
-        # loop yields on each publish, exits cleanly on disconnect
-        w.patch(updated_view())
-    # code here runs on disconnect (cleanup)
-```
+Wildcards: `"chat.*"` matches `chat.1`, `chat.room`. `"*"` matches all.
 
-**Client-side SSE Connection** — Use `data.init` on page load:
+---
+
+## CQRS Pattern
+
+Commands write. Queries read.
+
 ```python
-Div(
-    data.init(at.get("/subscribe", retry="always")),
-    content_view(),
-)
+# Command: POST → 204 → publish
+async def add(c: Context, w: Writer):
+    signals = await c.signals()
+    items.append(signals["new"])
+    relay.publish("refresh", None)
+    w.empty()
+
+# Query: SSE → patch on events
+async def stream(c: Context, w: Writer):
+    w.patch(render_list())
+    async for _ in w.alive(relay.subscribe("refresh")):
+        w.patch(render_list())
 ```
 
 ---
 
-### Optimistic UI Pattern
+## Optimistic UI
 
-1. POST handler returns `w.empty(204)` immediately + publishes event
-2. Subscribe handler appends loading row on "add" event
-3. Loading row has `data.init(at.get("/fetch-data"))` to lazy-load
-4. Fetch handler returns `w.empty(204)` + publishes "refresh"
-5. Refresh triggers full view re-render for everyone
+1. POST returns `w.empty(204)` immediately, publishes event
+2. Subscribe handler appends loading row
+3. Loading row has `data.init(at.get("/fetch"))` to lazy-load
+4. Fetch handler patches real content
 
 ```python
-def loading_row(username):
-    return Tr(
-        {"id": f"row-{username}"},
-        data.init(at.get(f"/fetch?user={username}")),
-        Td(Span({"class": "loading loading-spinner"}), " Loading..."),
+def loading_row(id):
+    return Tr({"id": f"row-{id}"},
+        data.init(at.get(f"/fetch?id={id}")),
+        Td("Loading...")
     )
 ```
 
 ---
 
-### Gotchas / Surprises
+## Error Handling
 
-1. **`w.empty(204)` doesn't stop execution** — code after it still runs (useful for fire-and-forget)
+```python
+from stario import HttpException
 
-2. **Imports aren't top-level** — `Context`, `Writer` come from `stario`, not submodules
+raise HttpException(404, "Not found")
 
-3. **Python 3.14 required** — older Python versions have import issues
+# Global handler
+def handle_404(c, w, exc):
+    w.html(Div("Not found"), status=404)
 
-4. **Datastar CDN matters** — use the correct version:
-   ```python
-   Script({"type": "module", "src": "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"})
-   ```
-
-5. **`{...}` is a set, not dict** — don't use as placeholder in `json=` args!
-
-6. **Race conditions** — when using optimistic UI + lazy fetch, check if item still exists before patching:
-   ```python
-   if username.lower() not in tracked_users:
-       w.empty(204)
-       return
-   ```
-
-7. **Full-page morph is simpler** — Datastar diffs efficiently, so re-patching entire views often beats targeted patches
+app.on_error(HttpException, handle_404)
+```
 
 ---
 
-### DaisyUI + Tailwind (via CDN)
+## Testing
 
 ```python
-Link({"rel": "stylesheet", "href": "https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css"}),
-Script({"src": "https://cdn.tailwindcss.com"}),
+from stario import TestRequest, ResponseRecorder, Context
+
+req = TestRequest(method="POST", body={"name": "Alice"})
+rec = ResponseRecorder()
+await handler(Context(req), rec)
+
+assert rec.status == 200
+assert "Alice" in rec.body
+# rec.patches, rec.signals for SSE
 ```
 
-Set theme on html: `Html({"data-theme": "forest"}, ...)`
+---
 
-Useful classes: `btn btn-primary`, `input input-bordered`, `table table-zebra`, `card`, `badge`, `toggle`, `loading loading-spinner`
+## Static Assets
+
+```python
+from pathlib import Path
+from stario import asset
+
+app.assets("/static", Path(__file__).parent / "static")
+
+# In HTML (fingerprinted):
+f"/static/{asset('style.css')}"  # → /static/style.abc123.css
+```
+
+---
+
+## Auth Pattern
+
+```python
+def require_auth(next_handler):
+    async def h(c, w):
+        sid = c.req.cookies.get("session")
+        if not sid:
+            return w.redirect("/login")
+        c.state["user"] = await get_user(sid)
+        await next_handler(c, w)
+    return h
+
+async def login(c: Context, w: Writer):
+    signals = await c.signals()
+    user = await authenticate(signals["user"], signals["pass"])
+    if not user:
+        return w.sync({"error": "Invalid"})
+    w.cookie("session", create_session(user), httponly=True, secure=True)
+    w.navigate("/home")
+```
+
+---
+
+## File Upload
+
+Files arrive Base64 in signals:
+```python
+signals = await c.signals()
+for f in signals.get("files", []):
+    data = base64.b64decode(f["contents"].split(",")[1])
+    Path(f"uploads/{f['name']}").write_bytes(data)
+```
+
+---
+
+## Dependency Injection
+
+Closures. No magic.
+
+```python
+def make_handler(db):
+    async def h(c, w):
+        w.json(await db.find(c.req.tail))
+    return h
+
+app.get("/users/*", make_handler(my_db))
+```
+
+---
+
+## Server
+
+```python
+await app.serve(host="0.0.0.0", port=8000, workers=4)
+```
+
+Compression: zstd > brotli > gzip (auto).
+
+---
+
+## Dev
+
+```bash
+uvx watchfiles "python main.py" .
+```
+
+---
+
+## Gotchas
+
+1. `w.empty(204)` doesn't stop execution
+2. Python 3.14+ required
+3. `{...}` is a set, not dict—don't use as placeholder
+4. Datastar CDN version matters: `@1.0.0-RC.7`
+5. Full-page morph often simpler than targeted patches
+6. Check item exists before patching (race conditions)
+
+---
+
+## CDN
+
+```python
+Script({"type": "module", "src": "https://cdn.jsdelivr.net/gh/starfederation/datastar@1.0.0-RC.7/bundles/datastar.js"})
+Link({"rel": "stylesheet", "href": "https://cdn.jsdelivr.net/npm/daisyui@4.12.14/dist/full.min.css"})
+Script({"src": "https://cdn.tailwindcss.com"})
+```
